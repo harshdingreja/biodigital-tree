@@ -1,0 +1,4 @@
+/* Minimal reset for full-width layout */
+#root {
+  min-height: 100vh;
+}
