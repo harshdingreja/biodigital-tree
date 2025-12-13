@@ -1,8 +1,8 @@
 # TODO: Create GitHub Repository for biodigital-tree
 
-- [ ] Check git status to see if repository is initialized
-- [ ] Initialize git if not already done
-- [ ] Add all files to git and commit
-- [ ] Check if GitHub CLI (gh) is installed, install if not
-- [ ] Create public GitHub repository using gh CLI
-- [ ] Push code to the new GitHub repository
+- [x] Check git status to see if repository is initialized
+- [x] Initialize git if not already done
+- [x] Add all files to git and commit
+- [x] Check if GitHub CLI (gh) is installed, install if not
+- [x] Create public GitHub repository using gh CLI
+- [x] Push code to the new GitHub repository

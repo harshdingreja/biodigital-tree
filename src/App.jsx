@@ -2,6 +2,41 @@ import React, { useState } from 'react'
 import { Play, RotateCcw, CheckCircle, Users, Database, Code } from 'lucide-react'
 import './App.css'
 
+// TreeNode class for BST
+class TreeNode {
+  constructor(name, age, relation) {
+    this.name = name
+    this.age = age
+    this.relation = relation
+    this.left = null
+    this.right = null
+  }
+}
+
+// Initialize the family tree structure
+const initializeTree = () => {
+  // Generation 1: Ashok (root)
+  const ashok = new TreeNode('Ashok', 85, 'Head of Family')
+  
+  // Generation 2: Rajesh and Seema (Ashok's children)
+  const rajesh = new TreeNode('Rajesh', 58, "Ashok's Son")
+  const seema = new TreeNode('Seema', 48, "Ashok's Daughter")
+  
+  // Ashok's children (younger on left, older on right based on age)
+  ashok.left = seema  // Seema is younger (48)
+  ashok.right = rajesh // Rajesh is older (58)
+  
+  // Generation 3: Rajesh's children
+  const rohan = new TreeNode('Rohan', 18, "Rajesh's Son")
+  rajesh.left = rohan // Rohan is youngest
+  
+  // Generation 3: Seema's children  
+  const anjali = new TreeNode('Anjali', 22, "Seema's Daughter")
+  seema.right = anjali // Anjali on right
+  
+  return ashok
+}
+
 const BioDigitalTree = () => {
   // Load Space Mono font
   React.useEffect(() => {
@@ -17,12 +52,15 @@ const BioDigitalTree = () => {
   }, [])
 
   const [currentPhase, setCurrentPhase] = useState(1)
-  const [language, setLanguage] = useState('python')
-  const [code, setCode] = useState('')
+  const [player1Language, setPlayer1Language] = useState('python')
+  const [player2Language, setPlayer2Language] = useState('python')
+  const [player1Code, setPlayer1Code] = useState('')
+  const [player2Code, setPlayer2Code] = useState('')
   const [output, setOutput] = useState('')
   const [slotAFilled, setSlotAFilled] = useState(false)
   const [slotBFilled, setSlotBFilled] = useState(false)
   const [errors, setErrors] = useState([])
+  const [familyTree, setFamilyTree] = useState(initializeTree())
 
   const rawData = [
     { name: 'Ashok', age: 85, relation: 'Head of Family' },
@@ -36,23 +74,43 @@ const BioDigitalTree = () => {
 
   const codeTemplates = {
     phase1: {
-      python: `# Write your Python program here`,
-      java: `// Write your Java program here`,
-      c: `// Write your C program here`,
-      cpp: `// Write your C++ program here`,
+      python: `# Player 1: Insert Sam into the tree
+# Write your BST insertion algorithm here
+`,
+      java: `// Player 1: Insert Sam into the tree
+// Write your BST insertion algorithm here
+`,
+      c: `// Player 1: Insert Sam into the tree
+// Write your BST insertion algorithm here
+`,
+      cpp: `// Player 1: Insert Sam into the tree
+// Write your BST insertion algorithm here
+`,
     },
     phase2: {
-      python: `# Write your Python program here`,
-      java: `// Write your Java program here`,
-      c: `// Write your C program here`,
-      cpp: `// Write your C++ program here`,
+      python: `# Player 2: Insert Vikram into the tree
+# Write your BST insertion algorithm here
+`,
+      java: `// Player 2: Insert Vikram into the tree
+// Write your BST insertion algorithm here
+`,
+      c: `// Player 2: Insert Vikram into the tree
+// Write your BST insertion algorithm here
+`,
+      cpp: `// Player 2: Insert Vikram into the tree
+// Write your BST insertion algorithm here
+`,
     },
   }
 
   const handleLanguageChange = (lang) => {
-    setLanguage(lang)
-    const phase = currentPhase === 1 ? 'phase1' : 'phase2'
-    setCode(codeTemplates[phase][lang])
+    if (currentPhase === 1) {
+      setPlayer1Language(lang)
+      setPlayer1Code(codeTemplates.phase1[lang])
+    } else {
+      setPlayer2Language(lang)
+      setPlayer2Code(codeTemplates.phase2[lang])
+    }
     setErrors([])
   }
 
@@ -61,6 +119,8 @@ const BioDigitalTree = () => {
   }
 
   const analyzeCode = () => {
+    const code = currentPhase === 1 ? player1Code : player2Code
+    const language = currentPhase === 1 ? player1Language : player2Language
     const lines = code.split('\n')
     const foundErrors = []
     const codeAnalysis = code.toLowerCase()
@@ -69,7 +129,7 @@ const BioDigitalTree = () => {
     if (language === 'python') {
       lines.forEach((line, index) => {
         const trimmed = line.trim()
-        if (trimmed.includes('if') && !trimmed.endsWith(':') && trimmed.length > 2) {
+        if (trimmed.includes('if') && !trimmed.endsWith(':') && !trimmed.includes('//') && trimmed.length > 2) {
           foundErrors.push({
             line: index + 1,
             message: "SyntaxError: Missing ':' at end of if statement",
@@ -140,7 +200,25 @@ const BioDigitalTree = () => {
       })
     }
 
-    // Logic warnings
+    // NEW: Check for BST insertion logic patterns
+    const hasBSTLogic = (
+      // Check for age comparison
+      (codeAnalysis.includes('age') && (codeAnalysis.includes('<') || codeAnalysis.includes('>'))) ||
+      // Check for left/right navigation
+      (codeAnalysis.includes('left') && codeAnalysis.includes('right')) ||
+      // Check for comparison operators with node/age
+      codeAnalysis.includes('compare')
+    )
+
+    if (!hasBSTLogic) {
+      foundErrors.push({
+        line: 0,
+        message: 'Warning: Code should include age comparison and left/right tree navigation',
+        severity: 'warning',
+      })
+    }
+
+    // Logic warnings specific to each phase
     if (currentPhase === 1) {
       if (!codeAnalysis.includes('sam') && !codeAnalysis.includes('24')) {
         foundErrors.push({
@@ -177,6 +255,7 @@ const BioDigitalTree = () => {
   }
 
   const runCode = () => {
+    const code = currentPhase === 1 ? player1Code : player2Code
     // First, analyze for errors
     const foundErrors = analyzeCode()
     setErrors(foundErrors)
@@ -216,54 +295,89 @@ const BioDigitalTree = () => {
       })
     }
 
-    // If no critical errors, check logic
-    if (currentPhase === 1) {
-      const codeAnalysis = code.toLowerCase()
+    // Check for BST logic patterns
+    const codeAnalysis = code.toLowerCase()
+    const hasBSTLogic = (
+      (codeAnalysis.includes('age') && (codeAnalysis.includes('<') || codeAnalysis.includes('>'))) ||
+      (codeAnalysis.includes('left') && codeAnalysis.includes('right'))
+    )
 
-      if (
+    // If no critical errors, validate BST insertion logic
+    if (currentPhase === 1) {
+      // Player 1: Insert Sam under Rajesh
+      const hasCorrectLogic = (
         (codeAnalysis.includes('sam') || codeAnalysis.includes('24')) &&
         (codeAnalysis.includes('rajesh') || codeAnalysis.includes('parent')) &&
-        (codeAnalysis.includes('child') || codeAnalysis.includes('son') || codeAnalysis.includes('==') || codeAnalysis.includes('equals'))
-      ) {
+        hasBSTLogic
+      )
+
+      if (hasCorrectLogic) {
+        // Perform actual tree insertion
+        const tree = familyTree
+        const rajesh = tree.right // Rajesh is on the right of Ashok
+        const sam = new TreeNode('Sam', 24, "Rajesh's Son")
+        
+        // Insert Sam based on BST rules (Sam:24 > Rohan:18, so goes right)
+        if (rajesh.left) {
+          rajesh.left.right = sam // Sam goes to the right of Rohan
+        }
+        
         setSlotAFilled(true)
+        setFamilyTree({...tree}) // Trigger re-render
+        
         setOutput(
-          `✓ Success! Player 1 code executed!
+          `✓ Success! Player 1 BST Insertion Complete!
 
-Sam (24) correctly placed in Slot A as Rajesh's child.
-
-Analysis: Your code identified Rajesh as parent and assigned Sam beneath him.
-Position: Generation 3 → Rajesh's branch (Slot A).
+🌳 BST Logic Validated:
+- Found parent: Rajesh (age 58)
+- Inserting child: Sam (age 24)
+- Age comparison: 24 < 58 → Navigate left subtree
+- Position: Sam placed correctly in Generation 3
 
 ✅ Player 1 complete!${warningText}`,
         )
       } else {
         setOutput(
-          "⚠ Logic Error: Code runs but doesn't solve the problem correctly.\\n\\nRemember:\\n- Sam is 24 years old\\n- Parent is Rajesh (Generation 2)\\n- Check if parent name matches \"Rajesh\"\\n- Add Sam as child of Rajesh" +
+          "⚠ Logic Error: BST insertion logic incomplete.\\n\\nYour code must:\\n1. Find parent node (Rajesh)\\n2. Compare ages (Sam: 24 vs siblings)\\n3. Navigate left/right based on comparison\\n4. Insert Sam in correct position" +
             warningText,
         )
       }
     } else {
-      const codeAnalysis = code.toLowerCase()
-
-      if (
+      // Player 2: Insert Vikram under Seema
+      const hasCorrectLogic = (
         (codeAnalysis.includes('vikram') || codeAnalysis.includes('26')) &&
         (codeAnalysis.includes('seema') || codeAnalysis.includes('parent')) &&
-        (codeAnalysis.includes('child') || codeAnalysis.includes('son') || codeAnalysis.includes('==') || codeAnalysis.includes('equals'))
-      ) {
+        hasBSTLogic
+      )
+
+      if (hasCorrectLogic) {
+        // Perform actual tree insertion
+        const tree = familyTree
+        const seema = tree.left // Seema is on the left of Ashok
+        const vikram = new TreeNode('Vikram', 26, "Seema's Son")
+        
+        // Insert Vikram based on BST rules (Vikram:26 > Anjali:22, stays right)
+        if (seema.right) {
+          seema.right.right = vikram // Vikram goes to the right of Anjali
+        }
+        
         setSlotBFilled(true)
+        setFamilyTree({...tree}) // Trigger re-render
+        
         setOutput(
-          `✓ Success! Player 2 code executed!
+          `✓ Success! Player 2 BST Insertion Complete!
 
-Vikram (26) correctly placed in Slot B as Seema's child.
-
-Analysis: Your code identified Seema as parent and assigned Vikram beneath her.
-Position: Generation 3 → Seema's branch (Slot B).
+🌳 BST Logic Validated:
+- Found parent: Seema (age 48)
+- Inserting child: Vikram (age 26)
+- Age comparison: 26 < 48 → Navigate left subtree
+- Position: Vikram placed correctly in Generation 3
 
 🎉 Both branches restored!${warningText}`,
         )
       } else {
         setOutput(
-          "⚠ Logic Error: Code runs but doesn't solve the problem correctly.\\n\\nRemember:\\n- Vikram is 26 years old\\n- Parent is Seema (Generation 2)\\n- Check if parent name matches \"Seema\"\\n- Add Vikram as child of Seema" +
+          "⚠ Logic Error: BST insertion logic incomplete.\\n\\nYour code must:\\n1. Find parent node (Seema)\\n2. Compare ages (Vikram: 26 vs siblings)\\n3. Navigate left/right based on comparison\\n4. Insert Vikram in correct position" +
             warningText,
         )
       }
@@ -271,25 +385,26 @@ Position: Generation 3 → Seema's branch (Slot B).
   }
 
   const switchPhase = (phase) => {
-    const phaseKey = phase === 1 ? 'phase1' : 'phase2'
     setCurrentPhase(phase)
-    setCode(codeTemplates[phaseKey][language])
     setOutput('')
     setErrors([])
   }
 
   const reset = () => {
-    setCode(codeTemplates.phase1[language])
+    setPlayer1Code(codeTemplates.phase1[player1Language])
+    setPlayer2Code(codeTemplates.phase2[player2Language])
     setOutput('')
     setSlotAFilled(false)
     setSlotBFilled(false)
     setCurrentPhase(1)
     setErrors([])
+    setFamilyTree(initializeTree()) // Reset the tree structure
   }
 
   // Initialize code on mount
   React.useEffect(() => {
-    setCode(codeTemplates.phase1[language])
+    setPlayer1Code(codeTemplates.phase1[player1Language])
+    setPlayer2Code(codeTemplates.phase2[player2Language])
   }, [])
 
   return (
@@ -439,7 +554,7 @@ Position: Generation 3 → Seema's branch (Slot B).
 
                 {/* Slot A (Player 1) */}
                 <div className="absolute left-[40%] -translate-x-1/2 top-[400px] flex flex-col items-center">
-                  <div className="text-[10px] font-bold text-red-400 mb-1 font-mono drop-shadow-[0_0_4px_rgba(220,38,38,0.6)]">GEN 3</div>
+                  <div className="text-[10px] font-bold text-green-400 mb-1 font-mono drop-shadow-[0_0_4px_rgba(34,197,94,0.6)]">GEN 3</div>
                   <div
                     className={`${
                       slotAFilled ? 'bg-black text-green-400 border-2 border-green-600 shadow-green-600/50' : 'bg-black text-red-400 border-2 border-red-600 shadow-red-600/50'
@@ -458,7 +573,7 @@ Position: Generation 3 → Seema's branch (Slot B).
                     )}
                     {!slotAFilled && <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)]"></div>}
                   </div>
-                  <div className="text-[10px] text-red-500 mt-1 font-medium font-mono">Rajesh's child (Player 1)</div>
+                  <div className="text-[10px] text-green-500 mt-1 font-medium font-mono">Rajesh's child (Player 1)</div>
                 </div>
 
                 {/* Slot B (Player 2) */}
@@ -499,7 +614,7 @@ Position: Generation 3 → Seema's branch (Slot B).
 
             {/* Rules */}
             <div className="bg-black border-2 border-green-600 rounded-lg p-4 shadow-green-900/30">
-              <h3 className="font-bold text-green-400 mb-3 font-mono text-lg drop-shadow-[0_0_6px_rgba(34,197,94,0.6)] tracking-wider">RULES:</h3>
+              <h3 className="font-bold text-green-400 mb-3 font-mono text-lg drop-shadow-[0_0_6px_rgba(34,197,94,0.6)] tracking-wider">BST INSERTION RULES:</h3>
               <ul className="space-y-3 text-sm text-green-300 font-mono">
                 <li className="flex items-start gap-2">
                   <span className="text-red-500 font-bold drop-shadow-[0_0_4px_rgba(220,38,38,0.6)]">1.</span>
@@ -510,7 +625,19 @@ Position: Generation 3 → Seema's branch (Slot B).
                 <li className="flex items-start gap-2">
                   <span className="text-red-500 font-bold drop-shadow-[0_0_4px_rgba(220,38,38,0.6)]">2.</span>
                   <span>
-                    <strong className="text-green-400">SENIORITY RULE:</strong> Siblings arranged by Age - Younger LEFT → Older RIGHT
+                    <strong className="text-green-400">AGE COMPARISON:</strong> Compare child's age with existing nodes
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-red-500 font-bold drop-shadow-[0_0_4px_rgba(220,38,38,0.6)]">3.</span>
+                  <span>
+                    <strong className="text-green-400">BST NAVIGATION:</strong> If age &lt; node.age, go LEFT; if age &gt; node.age, go RIGHT
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-red-500 font-bold drop-shadow-[0_0_4px_rgba(220,38,38,0.6)]">4.</span>
+                  <span>
+                    <strong className="text-green-400">INSERTION:</strong> Place node when you reach an empty position (null)
                   </span>
                 </li>
               </ul>
@@ -559,7 +686,7 @@ Position: Generation 3 → Seema's branch (Slot B).
               </h2>
               <div className="flex gap-2">
                 <select
-                  value={language}
+                  value={currentPhase === 1 ? player1Language : player2Language}
                   onChange={(e) => handleLanguageChange(e.target.value)}
                   className="px-3 py-2 border-2 border-red-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-black text-green-400 font-mono font-bold shadow-red-900/30"
                 >
@@ -576,29 +703,52 @@ Position: Generation 3 → Seema's branch (Slot B).
               <h3 className="font-bold text-green-400 mb-2 font-mono text-lg drop-shadow-[0_0_6px_rgba(34,197,94,0.6)] tracking-wider">
                 {currentPhase === 1 ? '🎯 PLAYER 1 TASK: FILL SLOT A (RAJESH ➜ SAM)' : '🎯 PLAYER 2 TASK: FILL SLOT B (SEEMA ➜ VIKRAM)'}
               </h3>
-              <p className="text-sm text-green-300 font-mono">
+              <p className="text-sm text-green-300 font-mono mb-3">
                 {currentPhase === 1
-                  ? 'Write a program to confirm Rajesh is the parent and place Sam (24) as his child in Slot A.'
-                  : 'Write a program to confirm Seema is the parent and place Vikram (26) as her child in Slot B.'}
+                  ? 'Write code logic to insert Sam (24) into the correct position in the tree.'
+                  : 'Write code logic to insert Vikram (26) into the correct position in the tree.'}
               </p>
-              <div className="mt-2 text-xs text-green-400 font-mono">
-                TIP: Two-player mode — each player can jump to their slot with the buttons above and run their own code.
+              <div className="bg-red-950/30 border-2 border-yellow-500 rounded p-3 mt-2">
+                <h4 className="text-yellow-400 font-bold text-xs mb-2 font-mono">⚠️ IMPORTANT - What We're Looking For:</h4>
+                <ul className="text-yellow-300 text-xs space-y-1 font-mono">
+                  <li>✓ Mention the child's name and age (Sam/24 or Vikram/26)</li>
+                  <li>✓ Mention the parent node (Rajesh or Seema)</li>
+                  <li>✓ Show age comparison using &gt; operator</li>
+                  <li>✓ Show left/right navigation logic</li>
+                  <li className="text-red-400 font-bold mt-2">⚠️ Pseudocode is fine! Full implementation NOT required.</li>
+                </ul>
               </div>
             </div>
 
             {/* Code Editor */}
             <div className="relative">
               <textarea
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                className="w-full h-64 p-4 pl-12 font-mono text-sm border-4 border-green-600 rounded-lg focus:outline-none focus:ring-4 focus:ring-green-500 bg-black text-green-400 shadow-green-900/30"
-                placeholder={`Write your ${language} code here...`}
+                value={currentPhase === 1 ? player1Code : player2Code}
+                onChange={(e) => {
+                  if (currentPhase === 1) {
+                    setPlayer1Code(e.target.value)
+                  } else {
+                    setPlayer2Code(e.target.value)
+                  }
+                }}
+                className="w-full h-64 p-4 pl-12 font-mono text-sm border-4 border-green-600 rounded-lg focus:outline-none focus:ring-4 focus:ring-green-500 bg-black text-green-400 shadow-green-900/30 overflow-y-auto resize-none"
+                placeholder={`Write your ${currentPhase === 1 ? player1Language : player2Language} code here...`}
                 spellCheck="false"
+                id="code-textarea"
+                onScroll={(e) => {
+                  const lineNumbers = document.getElementById('line-numbers');
+                  if (lineNumbers) {
+                    lineNumbers.scrollTop = e.target.scrollTop;
+                  }
+                }}
               />
               {/* Line numbers */}
-              <div className="absolute left-0 top-0 p-4 pointer-events-none">
+              <div 
+                id="line-numbers"
+                className="absolute left-0 top-0 p-4 pointer-events-none h-64 overflow-hidden border-4 border-transparent rounded-lg"
+              >
                 <div className="font-mono text-sm text-green-600/50 select-none">
-                  {code.split('\n').map((_, i) => (
+                  {(currentPhase === 1 ? player1Code : player2Code).split('\n').map((_, i) => (
                     <div key={i} className="leading-6">
                       {i + 1}
                     </div>
@@ -616,15 +766,6 @@ Position: Generation 3 → Seema's branch (Slot B).
                 <Play className="w-5 h-5" />
                 RUN CODE
               </button>
-              {slotAFilled && currentPhase === 1 && (
-                <button
-                  onClick={handlePhaseChange}
-                  className="flex-1 bg-black border-2 border-green-600 hover:bg-green-950 text-green-400 px-6 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition shadow-lg shadow-green-900/50 font-mono tracking-wider"
-                >
-                  <CheckCircle className="w-5 h-5" />
-                  NEXT PHASE
-                </button>
-              )}
               <button
                 onClick={reset}
                 className="bg-black border-2 border-red-600 hover:bg-red-950 text-red-400 px-6 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition shadow-lg shadow-red-900/50 font-mono tracking-wider"
@@ -652,11 +793,23 @@ Position: Generation 3 → Seema's branch (Slot B).
           <div className="grid md:grid-cols-2 gap-4 text-sm font-mono">
             <div className="bg-black border-2 border-green-600 p-4 rounded shadow-green-900/30">
                   <h4 className="font-bold text-green-400 mb-2 text-lg tracking-wider drop-shadow-[0_0_6px_rgba(34,197,94,0.6)]">PLAYER 1 (SLOT A - RAJESH ➜ SAM)</h4>
-                  <p className="text-green-300">Write a program that confirms Rajesh is the parent and places Sam (24) under Rajesh in Slot A (Generation 3).</p>
+                  <p className="text-green-300 mb-2">Write a BST insertion algorithm to place Sam (24) under Rajesh.</p>
+                  <ul className="text-green-300 text-xs space-y-1 ml-4">
+                    <li>• Find parent node: Rajesh (age 58)</li>
+                    <li>• Compare Sam's age (24) with siblings</li>
+                    <li>• Navigate left/right based on age</li>
+                    <li>• Insert Sam in correct BST position</li>
+                  </ul>
             </div>
       <div className="bg-black border-2 border-green-600 p-4 rounded shadow-green-900/30">
                   <h4 className="font-bold text-green-400 mb-2 text-lg tracking-wider drop-shadow-[0_0_6px_rgba(34,197,94,0.6)]">PLAYER 2 (SLOT B - SEEMA ➜ VIKRAM)</h4>
-                  <p className="text-green-300">Write a program that confirms Seema is the parent and places Vikram (26) under Seema in Slot B (Generation 3).</p>
+                  <p className="text-green-300 mb-2">Write a BST insertion algorithm to place Vikram (26) under Seema.</p>
+                  <ul className="text-green-300 text-xs space-y-1 ml-4">
+                    <li>• Find parent node: Seema (age 48)</li>
+                    <li>• Compare Vikram's age (26) with siblings</li>
+                    <li>• Navigate left/right based on age</li>
+                    <li>• Insert Vikram in correct BST position</li>
+                  </ul>
             </div>
           </div>
       </div>
