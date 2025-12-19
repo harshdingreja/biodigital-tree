@@ -1,5 +1,7 @@
+
+
 import React, { useState } from 'react'
-import { Play, RotateCcw, CheckCircle, Users, Database, Code } from 'lucide-react'
+import { Play, RotateCcw, CheckCircle, Users, Database, Code, Lightbulb, AlertTriangle } from 'lucide-react'
 import './App.css'
 
 // TreeNode class for BST
@@ -57,10 +59,16 @@ const BioDigitalTree = () => {
   const [player1Code, setPlayer1Code] = useState('')
   const [player2Code, setPlayer2Code] = useState('')
   const [output, setOutput] = useState('')
+
   const [slotAFilled, setSlotAFilled] = useState(false)
   const [slotBFilled, setSlotBFilled] = useState(false)
   const [errors, setErrors] = useState([])
+  const [hintStep, setHintStep] = useState(0) // 0 = not clicked, 1 = confirming, 2 = showing hint
+  const [hintMessage, setHintMessage] = useState('')
+  const [hintTimeout, setHintTimeout] = useState(null)
   const [familyTree, setFamilyTree] = useState(initializeTree())
+  const [timeRemaining, setTimeRemaining] = useState(600) // 10 minutes in seconds
+  const [timerActive, setTimerActive] = useState(true)
 
   const rawData = [
     { name: 'Ashok', age: 85, relation: 'Head of Family' },
@@ -254,7 +262,14 @@ const BioDigitalTree = () => {
     return foundErrors
   }
 
+
   const runCode = () => {
+    // Check if time is up
+    if (timeRemaining <= 0) {
+      setOutput('⏰ TIME UP! Cannot run code. Click RESET to start a new challenge.')
+      return
+    }
+
     const code = currentPhase === 1 ? player1Code : player2Code
     // First, analyze for errors
     const foundErrors = analyzeCode()
@@ -384,11 +399,21 @@ const BioDigitalTree = () => {
     }
   }
 
+
   const switchPhase = (phase) => {
     setCurrentPhase(phase)
     setOutput('')
     setErrors([])
+    setHintStep(0) // Reset hint step when switching phases
+    setHintMessage('') // Clear hint message
+
+    // Clear any pending hint timeout
+    if (hintTimeout) {
+      clearTimeout(hintTimeout)
+      setHintTimeout(null)
+    }
   }
+
 
   const reset = () => {
     setPlayer1Code(codeTemplates.phase1[player1Language])
@@ -401,11 +426,93 @@ const BioDigitalTree = () => {
     setFamilyTree(initializeTree()) // Reset the tree structure
   }
 
+  const getHint = () => {
+    // Clear any existing timeout
+    if (hintTimeout) {
+      clearTimeout(hintTimeout)
+    }
+
+    if (hintStep === 0) {
+      // First click - show confirmation
+      setHintStep(1)
+
+      // Set timeout to reset after 5 seconds
+      const timeout = setTimeout(() => {
+        setHintStep(0)
+        setHintTimeout(null)
+      }, 5000)
+
+      setHintTimeout(timeout)
+    } else if (hintStep === 1) {
+      // Second click - show hint
+      setHintStep(2)
+
+      // Clear the timeout since user confirmed
+      if (hintTimeout) {
+        clearTimeout(hintTimeout)
+        setHintTimeout(null)
+      }
+
+      let hint = ''
+      if (currentPhase === 1) {
+        hint = '💡 HINT: Find Rajesh (parent), compare Sam\'s age (24) with Rohan (18). Since 24 > 18, Sam goes RIGHT of Rohan.'
+      } else {
+        hint = '💡 HINT: Find Seema (parent), compare Vikram\'s age (26) with Anjali (22). Since 26 > 22, Vikram goes RIGHT of Anjali.'
+      }
+
+      setHintMessage(hint)
+    }
+  }
+
+
   // Initialize code on mount
   React.useEffect(() => {
     setPlayer1Code(codeTemplates.phase1[player1Language])
     setPlayer2Code(codeTemplates.phase2[player2Language])
   }, [])
+
+  // Timer countdown effect
+  React.useEffect(() => {
+    if (!timerActive || timeRemaining <= 0) return
+
+    const interval = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          setTimerActive(false)
+          setOutput('⏰ TIME UP! The challenge has ended. Click RESET to try again.')
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [timerActive, timeRemaining])
+
+  // Check if both players completed (stop timer)
+  React.useEffect(() => {
+    if (slotAFilled && slotBFilled && timerActive) {
+      setTimerActive(false)
+      const timeTaken = 600 - timeRemaining
+      const minutes = Math.floor(timeTaken / 60)
+      const seconds = timeTaken % 60
+      setOutput(
+        `🎉 VICTORY! Both players completed the challenge!
+
+⏱️ Time taken: ${minutes}m ${seconds}s
+🏆 Excellent teamwork!
+
+🌳 The Bio-Digital Tree has been fully restored!`
+      )
+    }
+  }, [slotAFilled, slotBFilled, timerActive, timeRemaining])
+
+  // Format time as MM:SS
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
 
   return (
     <div
@@ -413,12 +520,41 @@ const BioDigitalTree = () => {
       style={{ fontFamily: "'Space Mono', monospace" }}
     >
       <div className="max-w-7xl mx-auto">
+
         {/* Header */}
         <div className="bg-black rounded-lg shadow-2xl p-6 mb-6 border-4 border-red-600 shadow-red-900/50">
-          <h1 className="text-5xl font-bold text-red-600 mb-3 flex items-center gap-3 drop-shadow-[0_0_12px_rgba(220,38,38,1)] tracking-wider font-mono">
-            <Users className="w-12 h-12 text-red-600 drop-shadow-[0_0_8px_rgba(220,38,38,0.8)]" />
-            THE BIO-DIGITAL TREE
-          </h1>
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="text-5xl font-bold text-red-600 flex items-center gap-3 drop-shadow-[0_0_12px_rgba(220,38,38,1)] tracking-wider font-mono">
+              <Users className="w-12 h-12 text-red-600 drop-shadow-[0_0_8px_rgba(220,38,38,0.8)]" />
+              THE BIO-DIGITAL TREE
+            </h1>
+            {/* Timer Display */}
+            {(() => {
+              const timerBorderClass = timeRemaining <= 60
+                ? 'border-red-600 bg-red-950/50 shadow-red-900/70 animate-pulse'
+                : timeRemaining <= 180
+                ? 'border-yellow-600 bg-yellow-950/30 shadow-yellow-900/50'
+                : 'border-green-600 bg-green-950/30 shadow-green-900/50';
+
+              const timerTextClass = timeRemaining <= 60
+                ? 'text-red-400 drop-shadow-[0_0_12px_rgba(220,38,38,0.8)]'
+                : timeRemaining <= 180
+                ? 'text-yellow-400 drop-shadow-[0_0_12px_rgba(234,179,8,0.8)]'
+                : 'text-green-400 drop-shadow-[0_0_12px_rgba(34,197,94,0.8)]';
+
+              return (
+                <div className={`flex flex-col items-center px-6 py-3 rounded-lg border-4 ${timerBorderClass}`}>
+                  <div className="text-xs font-mono text-gray-400 mb-1">TIME REMAINING</div>
+                  <div className={`text-4xl font-bold font-mono tracking-wider ${timerTextClass}`}>
+                    {formatTime(timeRemaining)}
+                  </div>
+                  {timeRemaining <= 60 && (
+                    <div className="text-xs font-mono text-red-400 mt-1 font-bold animate-pulse">⚠️ HURRY UP!</div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
           <p className="text-green-400 font-mono text-lg drop-shadow-[0_0_8px_rgba(34,197,94,0.6)] tracking-wider">GENEALOGY & MEDICAL DATABASE RECOVERY CHALLENGE</p>
           <div className="mt-4 flex gap-4">
             <span
