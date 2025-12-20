@@ -66,6 +66,11 @@ const BioDigitalTree = () => {
   const [hintStep, setHintStep] = useState(0) // 0 = not clicked, 1 = confirming, 2 = showing hint
   const [hintMessage, setHintMessage] = useState('')
   const [hintTimeout, setHintTimeout] = useState(null)
+  const [skipStep, setSkipStep] = useState(0) // 0 = not clicked, 1 = confirming, 2 = showing skip
+  const [showPlayer1Popup, setShowPlayer1Popup] = useState(false)
+  const [showPlayer2Popup, setShowPlayer2Popup] = useState(false)
+  const [submittedPlayer1Code, setSubmittedPlayer1Code] = useState('')
+  const [submittedPlayer2Code, setSubmittedPlayer2Code] = useState('')
   const [familyTree, setFamilyTree] = useState(initializeTree())
   const [timeRemaining, setTimeRemaining] = useState(600) // 10 minutes in seconds
   const [timerActive, setTimerActive] = useState(true)
@@ -109,6 +114,31 @@ const BioDigitalTree = () => {
 // Write your BST insertion algorithm here
 `,
     },
+  }
+
+  const correctAnswers = {
+    phase1: `// Player 1 Solution: Insert Sam into the tree
+// Find parent Rajesh, compare ages, insert Sam correctly
+if (root.right != null) {  // Rajesh is on the right of Ashok
+    TreeNode rajesh = root.right;
+    TreeNode sam = new TreeNode("Sam", 24, "Rajesh's Son");
+    
+    // Insert Sam based on BST rules (Sam:24 > Rohan:18, so goes right)
+    if (rajesh.left != null) {  // Rohan is the left child of Rajesh
+        rajesh.left.right = sam;  // Sam goes to the right of Rohan
+    }
+}`,
+    phase2: `// Player 2 Solution: Insert Vikram into the tree
+// Find parent Seema, compare ages, insert Vikram correctly
+if (root.right != null) {  // Seema is on the right of Ashok
+    TreeNode seema = root.right;
+    TreeNode vikram = new TreeNode("Vikram", 26, "Seema's Son");
+    
+    // Insert Vikram based on BST rules (Vikram:26 > Anjali:22, so goes right)
+    if (seema.right != null) {  // Anjali is the right child of Seema
+        seema.right.right = vikram;  // Vikram goes to the right of Anjali
+    }
+}`
   }
 
   const handleLanguageChange = (lang) => {
@@ -340,6 +370,10 @@ const BioDigitalTree = () => {
         setSlotAFilled(true)
         setFamilyTree({...tree}) // Trigger re-render
         
+        // Save submitted code and show success popup
+        setSubmittedPlayer1Code(player1Code)
+        setShowPlayer1Popup(true)
+        
         setOutput(
           `✓ Success! Player 1 BST Insertion Complete!
 
@@ -378,6 +412,10 @@ const BioDigitalTree = () => {
         
         setSlotBFilled(true)
         setFamilyTree({...tree}) // Trigger re-render
+        
+        // Save submitted code and show success popup
+        setSubmittedPlayer2Code(player2Code)
+        setShowPlayer2Popup(true)
         
         setOutput(
           `✓ Success! Player 2 BST Insertion Complete!
@@ -457,10 +495,50 @@ const BioDigitalTree = () => {
       if (currentPhase === 1) {
         hint = '💡 HINT: Find Rajesh (parent), compare Sam\'s age (24) with Rohan (18). Since 24 > 18, Sam goes RIGHT of Rohan.'
       } else {
-        hint = '💡 HINT: Find Seema (parent), compare Vikram\'s age (26) with Anjali (22). Since 26 > 22, Vikram goes RIGHT of Anjali.'
+        hint = '💡 HINT: Find Seema (parent), compare Vikram\'s age (26) with Anjali (22). Since 26 > 22, Vikram goes LEFT of Anjali.'
       }
 
       setHintMessage(hint)
+    }
+  }
+
+  const getSkip = () => {
+    // Clear any existing timeout
+    if (hintTimeout) {
+      clearTimeout(hintTimeout)
+    }
+    
+    if (skipStep === 0) {
+      // First click - show confirmation
+      setSkipStep(1)
+      
+      // Set timeout to reset after 5 seconds
+      const timeout = setTimeout(() => {
+        setSkipStep(0)
+        setHintTimeout(null)
+      }, 5000)
+      
+      setHintTimeout(timeout)
+    } else if (skipStep === 1) {
+      // Second click - show the normal completion popup for the specific phase and redirect
+      setSkipStep(2)
+      
+      // Clear the timeout since user confirmed
+      if (hintTimeout) {
+        clearTimeout(hintTimeout)
+        setHintTimeout(null)
+      }
+      
+      // Show the normal completion popup for the specific phase
+      if (currentPhase === 1) {
+        setPlayer1Code(correctAnswers.phase1);
+        setSlotAFilled(true);
+        setShowPlayer1Popup(true);
+      } else {
+        setPlayer2Code(correctAnswers.phase2);
+        setSlotBFilled(true);
+        setShowPlayer2Popup(true);
+      }
     }
   }
 
@@ -847,10 +925,10 @@ const BioDigitalTree = () => {
               <div className="bg-red-950/30 border-2 border-yellow-500 rounded p-3 mt-2">
                 <h4 className="text-yellow-400 font-bold text-xs mb-2 font-mono">⚠️ IMPORTANT - What We're Looking For:</h4>
                 <ul className="text-yellow-300 text-xs space-y-1 font-mono">
-                  <li>✓ Mention the child's name and age (Sam/24 or Vikram/26)</li>
-                  <li>✓ Mention the parent node (Rajesh or Seema)</li>
+                  <li>✓ Mention the child's name and age</li>
+                  <li>✓ Mention the parent node</li>
                   <li>✓ Show age comparison using &gt; operator</li>
-                  <li>✓ Show left/right navigation logic</li>
+                  <li>✓ Show navigation logic</li>
                   <li className="text-red-400 font-bold mt-2">⚠️ Pseudocode is fine! Full implementation NOT required.</li>
                 </ul>
               </div>
@@ -903,11 +981,58 @@ const BioDigitalTree = () => {
                 RUN CODE
               </button>
               <button
-                onClick={reset}
-                className="bg-black border-2 border-red-600 hover:bg-red-950 text-red-400 px-6 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition shadow-lg shadow-red-900/50 font-mono tracking-wider"
+                onClick={getHint}
+                className={`px-6 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition shadow-lg font-mono tracking-wider ${
+                  hintStep === 1
+                    ? 'bg-purple-900 border-2 border-purple-600 text-white shadow-purple-900/50'
+                    : hintStep === 2
+                    ? 'bg-black border-2 border-yellow-600 text-yellow-400 shadow-yellow-900/50'
+                    : 'bg-black border-2 border-yellow-600 hover:bg-yellow-900 text-yellow-400 shadow-yellow-900/50'
+                }`}
               >
-                <RotateCcw className="w-5 h-5" />
-                RESET
+                {hintStep === 1 ? (
+                  <>
+                    <AlertTriangle className="w-5 h-5" />
+                    CONFIRM HINT?
+                  </>
+                ) : hintStep === 2 ? (
+                  <>
+                    <Lightbulb className="w-5 h-5" />
+                    HINT
+                  </>
+                ) : (
+                  <>
+                    <Lightbulb className="w-5 h-5" />
+                    HINT
+                  </>
+                )}
+              </button>
+              <button
+                onClick={getSkip}
+                className={`px-6 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition shadow-lg font-mono tracking-wider ${
+                  skipStep === 1
+                    ? 'bg-purple-900 border-2 border-purple-600 text-white shadow-purple-900/50'
+                    : skipStep === 2
+                    ? 'bg-black border-2 border-purple-600 text-purple-400 shadow-purple-900/50'
+                    : 'bg-black border-2 border-purple-600 hover:bg-purple-900 text-purple-400 shadow-purple-900/50'
+                }`}
+              >
+                {skipStep === 1 ? (
+                  <>
+                    <AlertTriangle className="w-5 h-5" />
+                    CONFIRM SKIP?
+                  </>
+                ) : skipStep === 2 ? (
+                  <>
+                    <Lightbulb className="w-5 h-5" />
+                    SKIPPED
+                  </>
+                ) : (
+                  <>
+                    <Lightbulb className="w-5 h-5" />
+                    SKIP
+                  </>
+                )}
               </button>
             </div>
 
@@ -920,36 +1045,116 @@ const BioDigitalTree = () => {
                 </div>
               </div>
             )}
+            
+            {/* Hint Message */}
+            {hintMessage && (
+              <div className="mt-4 bg-black text-yellow-400 p-4 rounded-lg font-mono text-sm border-2 border-yellow-600 shadow-yellow-900/30">
+                <div className="flex items-start gap-2">
+                  <span className="text-yellow-500 font-bold">💡</span>
+                  <div>{hintMessage}</div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Footer Info */}
         <div className="mt-6 bg-black rounded-lg shadow-2xl p-6 border-4 border-red-600 shadow-red-900/50">
           <h3 className="font-bold text-red-600 mb-4 font-mono text-2xl tracking-wider drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]">GAME INSTRUCTIONS:</h3>
-          <div className="grid md:grid-cols-2 gap-4 text-sm font-mono">
-            <div className="bg-black border-2 border-green-600 p-4 rounded shadow-green-900/30">
-                  <h4 className="font-bold text-green-400 mb-2 text-lg tracking-wider drop-shadow-[0_0_6px_rgba(34,197,94,0.6)]">PLAYER 1 (SLOT A - RAJESH ➜ SAM)</h4>
-                  <p className="text-green-300 mb-2">Write a BST insertion algorithm to place Sam (24) under Rajesh.</p>
-                  <ul className="text-green-300 text-xs space-y-1 ml-4">
-                    <li>• Find parent node: Rajesh (age 58)</li>
-                    <li>• Compare Sam's age (24) with siblings</li>
-                    <li>• Navigate left/right based on age</li>
-                    <li>• Insert Sam in correct BST position</li>
-                  </ul>
-            </div>
-      <div className="bg-black border-2 border-green-600 p-4 rounded shadow-green-900/30">
-                  <h4 className="font-bold text-green-400 mb-2 text-lg tracking-wider drop-shadow-[0_0_6px_rgba(34,197,94,0.6)]">PLAYER 2 (SLOT B - SEEMA ➜ VIKRAM)</h4>
-                  <p className="text-green-300 mb-2">Write a BST insertion algorithm to place Vikram (26) under Seema.</p>
-                  <ul className="text-green-300 text-xs space-y-1 ml-4">
-                    <li>• Find parent node: Seema (age 48)</li>
-                    <li>• Compare Vikram's age (26) with siblings</li>
-                    <li>• Navigate left/right based on age</li>
-                    <li>• Insert Vikram in correct BST position</li>
-                  </ul>
-            </div>
+          <div className="text-sm font-mono">
+            {currentPhase === 1 && (
+              <div className="bg-black border-2 border-green-600 p-4 rounded shadow-green-900/30">
+                <h4 className="font-bold text-green-400 mb-2 text-lg tracking-wider drop-shadow-[0_0_6px_rgba(34,197,94,0.6)]">PLAYER 1 (SLOT A - RAJESH ➜ SAM)</h4>
+                <p className="text-green-300 mb-2">Write a BST insertion algorithm to place Sam (24) under Rajesh.</p>
+                <ul className="text-green-300 text-xs space-y-1 ml-4">
+                  <li>• Find parent node: Rajesh (age 58)</li>
+                  <li>• Compare Sam's age (24) with siblings</li>
+                  <li>• Navigate left/right based on age</li>
+                  <li>• Insert Sam in correct BST position</li>
+                </ul>
+              </div>
+            )}
+            {currentPhase === 2 && (
+              <div className="bg-black border-2 border-green-600 p-4 rounded shadow-green-900/30">
+                <h4 className="font-bold text-green-400 mb-2 text-lg tracking-wider drop-shadow-[0_0_6px_rgba(34,197,94,0.6)]">PLAYER 2 (SLOT B - SEEMA ➜ VIKRAM)</h4>
+                <p className="text-green-300 mb-2">Write a BST insertion algorithm to place Vikram (26) under Seema.</p>
+                <ul className="text-green-300 text-xs space-y-1 ml-4">
+                  <li>• Find parent node: Seema (age 48)</li>
+                  <li>• Compare Vikram's age (26) with siblings</li>
+                  <li>• Navigate left/right based on age</li>
+                  <li>• Insert Vikram in correct BST position</li>
+                </ul>
+              </div>
+            )}
           </div>
       </div>
       </div>
+    {/* Player 1 Completion Popup */}
+    {showPlayer1Popup && (
+      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div className="bg-black border-4 border-red-600 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4 relative">
+          <div className="text-center">
+            <div className="text-5xl mb-4">🎉</div>
+            <h2 className="text-2xl font-bold text-red-400 mb-4 font-mono tracking-wider drop-shadow-[0_0_6px_rgba(220,38,38,0.6)]">
+              PHASE 1 COMPLETE!
+            </h2>
+            <p className="text-red-300 mb-6 font-mono">
+              Player 1 has successfully completed their phase.
+            </p>
+            <div className="bg-black border-2 border-red-600 rounded-lg p-4 mb-6">
+              <p className="text-red-400 font-mono text-sm mb-2">YOUR CODE SEGMENT:</p>
+              <div className="flex justify-center">
+                <span className="bg-red-900 text-red-400 px-4 py-3 rounded font-mono font-bold text-xl tracking-wider">DEMO</span>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setShowPlayer1Popup(false);
+                // Redirect to next page
+                window.location.href = 'http://localhost:8000/unlock-gate.html';
+              }}
+              className="bg-black border-2 border-red-600 hover:bg-red-900 text-red-400 px-6 py-3 rounded-lg font-bold transition shadow-lg shadow-red-900/50 font-mono tracking-wider"
+            >
+              CONTINUE
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    
+    {/* Player 2 Completion Popup */}
+    {showPlayer2Popup && (
+      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div className="bg-black border-4 border-green-600 p-8 rounded-lg shadow-2xl max-w-md w-full mx-4 relative">
+          <div className="text-center">
+            <div className="text-5xl mb-4">🎉</div>
+            <h2 className="text-2xl font-bold text-green-400 mb-4 font-mono tracking-wider drop-shadow-[0_0_6px_rgba(34,197,94,0.6)]">
+              PHASE 2 COMPLETE!
+            </h2>
+            <p className="text-green-300 mb-6 font-mono">
+              Player 2 has successfully completed their phase.
+            </p>
+            <div className="bg-black border-2 border-green-600 rounded-lg p-4 mb-6">
+              <p className="text-green-400 font-mono text-sm mb-2">YOUR CODE SEGMENT:</p>
+              <div className="flex justify-center">
+                <span className="bg-green-900 text-green-400 px-4 py-3 rounded font-mono font-bold text-xl tracking-wider">GORGAN</span>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setShowPlayer2Popup(false);
+                // Redirect to next page
+                window.location.href = 'http://localhost:8000/unlock-gate.html';
+              }}
+              className="bg-black border-2 border-green-600 hover:bg-green-900 text-green-400 px-6 py-3 rounded-lg font-bold transition shadow-lg shadow-green-900/50 font-mono tracking-wider"
+            >
+              CONTINUE
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    
     </div>
   )
 }
